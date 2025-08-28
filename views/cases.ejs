@@ -1,0 +1,14 @@
+<%- include('partials/header') %>
+<h2 class="mb-3">My Cases</h2>
+<div class="vstack gap-3">
+  <% cases.forEach(c => { %>
+    <div class="card p-3">
+      <div class="d-flex justify-content-between">
+        <strong><%= c.title %></strong>
+        <small class="text-secondary"><%= new Date(c.createdAt).toLocaleString() %></small>
+      </div>
+      <pre class="mt-2 mb-0"><%= c.content %></pre>
+    </div>
+  <% }) %>
+</div>
+<%- include('partials/footer') %>

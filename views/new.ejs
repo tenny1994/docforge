@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>New Case</title>
+  </head>
+  <body>
+    <h2>Create a Case</h2>
+    <p>
+      <a href="/">Home</a> |
+      <a href="/cases">View Cases</a>
+    </p>
+    <form method="post" action="/cases">
+      <div>
+        <label>Title</label><br>
+        <input name="title" required style="width:300px">
+      </div>
+      <div>
+        <label>Content</label><br>
+        <textarea name="content" rows="6" style="width:300px"></textarea>
+      </div>
+      <button type="submit">Save</button>
+    </form>
+  </body>
+</html>

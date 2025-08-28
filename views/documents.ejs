@@ -1,0 +1,22 @@
+<%- include('partials/header') %>
+<h2 class="mb-2">Choose a Document</h2>
+<p class="text-secondary">Government, business, and general letters.</p>
+<% 
+  const cats = {};
+  items.forEach(i => (cats[i.categoryLabel] = cats[i.categoryLabel] || []).push(i));
+%>
+<div class="row g-3">
+  <% Object.keys(cats).forEach(cat => { %>
+    <div class="col-md-6">
+      <div class="card p-3 h-100">
+        <h5 class="mb-2"><%= cat %></h5>
+        <ul class="mb-0">
+          <% cats[cat].forEach(i => { %>
+            <li><a href="/documents/<%= i.key %>/new"><%= i.name %></a></li>
+          <% }) %>
+        </ul>
+      </div>
+    </div>
+  <% }) %>
+</div>
+<%- include('partials/footer') %>

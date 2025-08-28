@@ -1,0 +1,46 @@
+<%- include('partials/header') %>
+<h2 class="mb-3"><%= name %></h2>
+
+<form class="card p-3 mb-4" method="post" action="/documents/<%= type %>/generate">
+  <% fields.forEach(f => { %>
+    <div class="mb-3">
+      <label class="form-label">
+        <strong><%= f.label %></strong>
+        <% if (f.required) { %><span class="text-danger">*</span><% } %>
+      </label>
+      <% if (f.example) { %>
+        <div class="text-secondary" style="font-style:italic; font-size:.9rem;"><%= f.example %></div>
+      <% } %>
+
+      <% if (f.type === 'textarea') { %>
+        <textarea class="form-control" name="<%= f.key %>" rows="4"><%= f.default || '' %></textarea>
+      <% } else if (f.type === 'date') { %>
+        <input class="form-control" type="date" name="<%= f.key %>" value="<%= f.default || '' %>"/>
+      <% } else if (f.type === 'select') { %>
+        <select class="form-select" name="<%= f.key %>">
+          <% (f.options || []).forEach(opt => { %>
+            <option value="<%= opt.value %>" <%= (f.default === opt.value ? 'selected' : '') %>><%= opt.label %></option>
+          <% }) %>
+        </select>
+      <% } else { %>
+        <input class="form-control" name="<%= f.key %>" value="<%= f.default || '' %>"/>
+      <% } %>
+    </div>
+  <% }) %>
+  <button class="btn btn-primary" type="submit">Generate</button>
+</form>
+
+<% if (output) { %>
+  <div class="card p-3">
+    <h4 class="mb-2">Draft</h4>
+    <form class="mb-3" method="post" action="/documents/<%= type %>/save">
+      <textarea class="form-control" name="draft" rows="14"><%= output %></textarea>
+      <button class="btn btn-success mt-3" type="submit">Save Draft to Cases</button>
+    </form>
+    <form method="post" action="/documents/<%= type %>/export-pdf">
+      <input type="hidden" name="draft" value="<%- output.replace(/"/g,'&quot;') %>">
+      <button class="btn btn-outline-secondary" type="submit">Export as PDF</button>
+    </form>
+  </div>
+<% } %>
+<%- include('partials/footer') %>
