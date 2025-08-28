@@ -1,5 +1,5 @@
-// server.js — full app (home, cases, document generator, save, export PDF, static assets)
-// Fixed for GPT-5 (no temperature), robust PDF streaming, and now serves /public for CSS/JS/images.
+// server.js — full app (home, cases, document generator, save, export PDF on Render)
+// Fixed for GPT-5 (no temperature) and Puppeteer executablePath on Render
 
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -24,8 +24,6 @@ const prisma = new PrismaClient();
 app.set('view engine', 'ejs');
 app.set('views', __dirname + '/views');
 app.use(bodyParser.urlencoded({ extended: true }));
-
-// ✅ this is the new line so /public/styles.css, /public/logo.png, etc. are available
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ---- Home ----
@@ -59,13 +57,11 @@ app.post('/documents/:type/generate', async (req, res) => {
   const spec = docs[type];
   if (!spec) return res.status(404).send('Unknown document type');
 
-  // Collect fields with defaults
   const filled = {};
   (spec.fields || []).forEach(f => {
     filled[f.key] = (req.body[f.key] || f.default || '').toString().trim();
   });
 
-  // Required check
   const missing = (spec.fields || []).filter(f => f.required && !filled[f.key]);
   if (missing.length) {
     return res.render('doc_form', {
@@ -74,11 +70,9 @@ app.post('/documents/:type/generate', async (req, res) => {
     });
   }
 
-  // Build messages for the model
   const system = spec.system;
   const user = spec.userTemplate({ fields: filled });
 
-  // Call OpenAI (GPT-5, no temperature)
   let draft = '';
   try {
     const resp = await openai.chat.completions.create({
@@ -109,7 +103,7 @@ app.post('/documents/:type/save', async (req, res) => {
   res.redirect('/cases');
 });
 
-// ---- Export draft as PDF (write to disk, then stream with safe ASCII filename) ----
+// ---- Export draft as PDF (Render: use installed Chrome) ----
 app.post('/documents/:type/export-pdf', async (req, res) => {
   const { type } = req.params;
   const spec = docs[type];
@@ -126,10 +120,15 @@ app.post('/documents/:type/export-pdf', async (req, res) => {
     const tpl = Handlebars.compile(tplStr);
     const html = tpl({ title: spec.name, draft, date: new Date().toLocaleString() });
 
+    // Get Chrome path from Puppeteer
+    const chromePath = await puppeteer.executablePath();
+
     const browser = await puppeteer.launch({
       headless: true,
+      executablePath: chromePath,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     });
+
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle0' });
 
@@ -143,6 +142,7 @@ app.post('/documents/:type/export-pdf', async (req, res) => {
       .replace(/_+/g, '_')
       .replace(/^_+|_+$/g, '')
       .slice(0, 80) || 'document';
+
     const fileName = `${asciiBase}.pdf`;
     const filePath = path.join(pdfsDir, fileName);
 
@@ -160,6 +160,7 @@ app.post('/documents/:type/export-pdf', async (req, res) => {
       'Content-Disposition',
       `attachment; filename="${fileName}"; filename*=UTF-8''${encodeURIComponent(asciiBase)}.pdf`
     );
+
     const stream = fs.createReadStream(filePath);
     stream.on('error', (err) => {
       console.error('Stream error:', err);
@@ -172,7 +173,7 @@ app.post('/documents/:type/export-pdf', async (req, res) => {
   }
 });
 
-// ---- Simple Case pages (list & manual create) ----
+// ---- Simple Case pages ----
 app.get('/cases', async (req, res) => {
   const cases = await prisma.case.findMany({ orderBy: { createdAt: 'desc' } });
   res.render('cases', { cases });
