@@ -1,5 +1,4 @@
-// server.js — full app (home, cases, document generator, save, export PDF on Render)
-// Fixed for GPT-5 (no temperature) and Puppeteer executablePath on Render
+// server.js — full app (GPT-5 generator, Neon DB, PDF export via puppeteer-core + @sparticuz/chromium)
 
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -14,7 +13,8 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const docs = require('./docs');
 
 const Handlebars = require('handlebars');
-const puppeteer = require('puppeteer');
+const chromium = require('@sparticuz/chromium');
+const puppeteer = require('puppeteer-core'); // IMPORTANT: puppeteer-core (not puppeteer)
 const fs = require('fs');
 const path = require('path');
 
@@ -103,7 +103,7 @@ app.post('/documents/:type/save', async (req, res) => {
   res.redirect('/cases');
 });
 
-// ---- Export draft as PDF (Render: use installed Chrome) ----
+// ---- Export draft as PDF (serverless-friendly Chromium) ----
 app.post('/documents/:type/export-pdf', async (req, res) => {
   const { type } = req.params;
   const spec = docs[type];
@@ -120,13 +120,15 @@ app.post('/documents/:type/export-pdf', async (req, res) => {
     const tpl = Handlebars.compile(tplStr);
     const html = tpl({ title: spec.name, draft, date: new Date().toLocaleString() });
 
-    // Get Chrome path from Puppeteer
-    const chromePath = await puppeteer.executablePath();
+    // Configure chromium for Linux/serverless environments (Render)
+    // (defaults are fine; override if needed: chromium.setHeadlessMode = true)
+    const executablePath = await chromium.executablePath();
 
     const browser = await puppeteer.launch({
-      headless: true,
-      executablePath: chromePath,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+      headless: chromium.headless,
+      executablePath,
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
     });
 
     const page = await browser.newPage();
